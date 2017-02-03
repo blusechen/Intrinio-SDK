@@ -187,5 +187,29 @@ public class Security {
     public void setMarket_sector(String market_sector) {
         this.market_sector = market_sector;
     }
+
+    @Override
+    public String toString() {
+        return "Security{" +
+                "share_class_figi='" + share_class_figi + '\'' +
+                ", ticker='" + ticker + '\'' +
+                ", stock_exchange='" + stock_exchange + '\'' +
+                ", mic='" + mic + '\'' +
+                ", figi_exch_cntry='" + figi_exch_cntry + '\'' +
+                ", primary_listing=" + primary_listing +
+                ", figi='" + figi + '\'' +
+                ", figi_uniqueid='" + figi_uniqueid + '\'' +
+                ", delisted_security=" + delisted_security +
+                ", security_name='" + security_name + '\'' +
+                ", last_crsp_adj_date='" + last_crsp_adj_date + '\'' +
+                ", composite_figi='" + composite_figi + '\'' +
+                ", etf=" + etf +
+                ", currency='" + currency + '\'' +
+                ", exch_symbol='" + exch_symbol + '\'' +
+                ", security_type='" + security_type + '\'' +
+                ", figi_ticker='" + figi_ticker + '\'' +
+                ", market_sector='" + market_sector + '\'' +
+                '}';
+    }
 }
 
