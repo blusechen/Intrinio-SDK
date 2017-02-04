@@ -38,6 +38,10 @@ public class Company {
     public int employees;
     public String business_phone_no;
 
+    public Company(){
+
+    }
+
     public Company(String template, String short_description, String industry_category, String cik, String stock_exchange, String business_address, int sic, String ceo, String inc_country, Security[] securities, String lei, String hq_country, String company_url, String hq_state, String industry_group, String legal_name, String sector, String hq_address2, String ticker, String hq_address1, String long_description, String hq_address_city, String mailing_address, String inc_state, boolean standardized_active, String entity_legal_form, String name, String hq_address_postal_code, String entity_status, int employees, String business_phone_no) {
         this.template = template;
         this.short_description = short_description;
