@@ -1,14 +1,9 @@
 package client;
 
-import domain.Company;
-import domain.CompanyBuilder;
-import domain.Security;
-import domain.SecurityBuilder;
-import org.apache.http.HttpRequest;
+import domain.*;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -20,9 +15,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.Optional;
 
 /**
@@ -39,17 +33,50 @@ public class IntrinioClient {
         this.client = HttpClientBuilder.create().setDefaultCredentialsProvider(this.credentialsProvider).build();
     }
 
+    public Optional<CompanyCompact[]> searchCompanies(String query) {
+        try {
+            String escapedQuery = URLEncoder.encode(query, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.COMPANIES_URL + "?query=" + escapedQuery));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject companyJSON = new JSONObject(responseBody);
+            JSONArray results = companyJSON.has("data") && !companyJSON.isNull("data") ? companyJSON.getJSONArray("data") : new JSONArray();
+            return buildCompanyCompactFromJSONArray(results);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    private Optional<CompanyCompact[]> buildCompanyCompactFromJSONArray(JSONArray data) {
+        if (data.length() == 0) {
+            return Optional.empty();
+        } else {
+            CompanyCompact[] companyResults = new CompanyCompact[data.length()];
+            for (int i = 0; i < data.length(); i++) {
+                JSONObject companyJSON = data.getJSONObject(i);
+                String ticker = companyJSON.has("ticker") && !companyJSON.isNull("ticker") ? companyJSON.getString("ticker") : "";
+                String name = companyJSON.has("name") && !companyJSON.isNull("name") ? companyJSON.getString("name") : "";
+                String lei = companyJSON.has("lei") && !companyJSON.isNull("lei") ? companyJSON.getString("lei") : "";
+                String cik = companyJSON.has("cik") && !companyJSON.isNull("cik") ? companyJSON.getString("cik") : "";
+                companyResults[i] = new CompanyCompact(ticker, name, lei, cik);
+            }
+            return Optional.of(companyResults);
+        }
+    }
+
     public Optional<Company> getCompanyInformation(String identifier) {
         try {
-            HttpResponse response = this.client.execute(new HttpGet(this.COMPANIES_URL + "?identifier=" + identifier));
-            JSONObject companyJSON = new JSONObject(EntityUtils.toString(response.getEntity(), "UTF-8"));
-            Optional<Company> companyop;
-            if(response.getStatusLine().getStatusCode() == 200) {
-               companyop = buildCompanyFromJSON(companyJSON);
-            }else{
-                companyop = Optional.empty();
+            String escapedIdentifier = URLEncoder.encode(identifier, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.COMPANIES_URL + "?identifier=" + escapedIdentifier));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
             }
-            return companyop;
+            JSONObject companyJSON = new JSONObject(responseBody);
+            return buildCompanyFromJSON(companyJSON);
         } catch (IOException | JSONException e) {
             e.printStackTrace();
             return Optional.empty();
