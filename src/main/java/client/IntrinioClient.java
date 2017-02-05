@@ -26,6 +26,8 @@ public class IntrinioClient {
     private HttpClient client;
     private CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     private final String COMPANIES_URL = "https://api.intrinio.com/companies";
+    private final String SECURITIES_URL = "https://api.intrinio.com/securities";
+
 
     public IntrinioClient(String username, String password) {
         UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(username, password);
@@ -33,6 +35,16 @@ public class IntrinioClient {
         this.client = HttpClientBuilder.create().setDefaultCredentialsProvider(this.credentialsProvider).build();
     }
 
+    /**
+     * This method will hit hit the https://api.intrinio.com/companies endpoint
+     * and search for the company with the given query. Results returned from this
+     * method are an incomplete dataset. Typically, this method will be used
+     * to find a company then use the getCompanyInformation() method will be called for
+     * a complete dataset relating to the company.
+     *
+     * @param query String query with which to search
+     * @return Empty optional if no results found, otherwise an array of CompanyCompact results
+     */
     public Optional<CompanyCompact[]> searchCompanies(String query) {
         try {
             String escapedQuery = URLEncoder.encode(query, "UTF-8");
@@ -44,7 +56,7 @@ public class IntrinioClient {
             JSONObject companyJSON = new JSONObject(responseBody);
             JSONArray results = companyJSON.has("data") && !companyJSON.isNull("data") ? companyJSON.getJSONArray("data") : new JSONArray();
             return buildCompanyCompactFromJSONArray(results);
-        } catch (IOException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
             return Optional.empty();
         }
@@ -67,6 +79,13 @@ public class IntrinioClient {
         }
     }
 
+    /**
+     * This method will hit the https://api.intrinio.com/companies endpoint and return all data
+     * associated with the company with the given identifier.
+     *
+     * @param identifier The stock symbol associated with the company
+     * @return Empty optional if no company found, or a Company object containing all related information.
+     */
     public Optional<Company> getCompanyInformation(String identifier) {
         try {
             String escapedIdentifier = URLEncoder.encode(identifier, "UTF-8");
@@ -152,6 +171,127 @@ public class IntrinioClient {
         Security[] securitiesArray = new Security[securities.size()];
         securitiesArray = securities.toArray(securitiesArray);
         return Optional.of(securitiesArray);
+    }
+
+    /**
+     * This method will hit hit the https://api.intrinio.com/securities endpoint
+     * and search for the security with the given query. Results returned from this
+     * method are an incomplete dataset. Typically, this method will be used
+     * to find a Security then use the getSecurityInformation() method will be called for
+     * a complete dataset relating to the Security.
+     *
+     * @param query String query with which to search
+     * @return Empty optional if no results found, otherwise an array of SecurityCompact results
+     */
+    public Optional<SecurityCompact[]> searchSecuritiesByQuery(String query) {
+        try {
+            String escapedQuery = URLEncoder.encode(query, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.SECURITIES_URL + "?query=" + escapedQuery));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject securityJSON = new JSONObject(responseBody);
+            JSONArray results = securityJSON.has("data") && !securityJSON.isNull("data") ? securityJSON.getJSONArray("data") : new JSONArray();
+            return buildSecurityCompactFromJSONArray(results);
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * This method will hit hit the https://api.intrinio.com/securities endpoint
+     * and search for all securities on the given exchange. Results returned from this
+     * method are compact.
+     *
+     * @param exchange String exchange with which to search
+     * @return Empty optional if no results found, otherwise an array of SecurityCompact results
+     */
+    public Optional<SecurityCompact[]> searchSecuritiesByExchange(String exchange) {
+        try {
+            String escapedQuery = URLEncoder.encode(exchange, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.SECURITIES_URL + "?exch_symbol=" + escapedQuery));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject securityJSON = new JSONObject(responseBody);
+            JSONArray results = securityJSON.has("data") && !securityJSON.isNull("data") ? securityJSON.getJSONArray("data") : new JSONArray();
+            return buildSecurityCompactFromJSONArray(results);
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    private Optional<SecurityCompact[]> buildSecurityCompactFromJSONArray(JSONArray data) {
+        if (data.length() == 0) {
+            return Optional.empty();
+        } else {
+            SecurityCompact[] securityResults = new SecurityCompact[data.length()];
+            for (int i = 0; i < data.length(); i++) {
+                JSONObject securityJSON = data.getJSONObject(i);
+                String ticker = securityJSON.has("ticker") && !securityJSON.isNull("ticker") ? securityJSON.getString("ticker") : "";
+                String figi_ticker = securityJSON.has("figi_ticker") && !securityJSON.isNull("figi_ticker") ? securityJSON.getString("figi_ticker") : "";
+                String figi = securityJSON.has("figi") && !securityJSON.isNull("figi") ? securityJSON.getString("figi") : "";
+                String security_name = securityJSON.has("security_name") && !securityJSON.isNull("security_name") ? securityJSON.getString("security_name") : "";
+                String market_sector = securityJSON.has("market_sector") && !securityJSON.isNull("market_sector") ? securityJSON.getString("market_sector") : "";
+                String security_type = securityJSON.has("security_type") && !securityJSON.isNull("security_type") ? securityJSON.getString("security_type") : "";
+                String stock_exchange = securityJSON.has("stock_exchange") && !securityJSON.isNull("stock_exchange") ? securityJSON.getString("stock_exchange") : "";
+                String last_crsp_adj_date = securityJSON.has("last_crsp_adj_date") && !securityJSON.isNull("last_crsp_adj_date") ? securityJSON.getString("last_crsp_adj_date") : "";
+                securityResults[i] = new SecurityCompact(ticker, figi_ticker, figi, security_name, market_sector, security_type, stock_exchange, last_crsp_adj_date);
+            }
+            return Optional.of(securityResults);
+        }
+    }
+
+    /**
+     * This method will hit the https://api.intrinio.com/securities endpoint and return all data
+     * associated with the security with the given identifier.
+     *
+     * @param identifier The stock symbol associated with the security
+     * @return Empty optional if no security found, or a Security object containing all related information.
+     */
+    public Optional<Security> getSecurityInformation(String identifier) {
+        try {
+            String escapedIdentifier = URLEncoder.encode(identifier, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.SECURITIES_URL + "?identifier=" + escapedIdentifier));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject securityJSON = new JSONObject(responseBody);
+            return buildSecurityFromJSON(securityJSON);
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    private Optional<Security> buildSecurityFromJSON(JSONObject security) {
+        return Optional.of(
+                new SecurityBuilder()
+                        .Share_class_figi(security.has("share_class_figi") && !security.isNull("share_class_figi") ? security.getString("share_class_figi") : "")
+                        .Ticker(security.has("ticker") && !security.isNull("ticker") ? security.getString("ticker") : "")
+                        .Stock_exchange(security.has("stock_exchange") && !security.isNull("stock_exchange") ? security.getString("stock_exchange") : "")
+                        .Mic(security.has("mic") && !security.isNull("mic") ? security.getString("mic") : "")
+                        .Figi_exch_cntry(security.has("figi_exch_cntry") && !security.isNull("figi_exch_cntry") ? security.getString("figi_exch_cntry") : "")
+                        .Primary_listing((security.has("primary_listing") && !security.isNull("primary_listing")) && security.getBoolean("primary_listing"))
+                        .Figi(security.has("figi") && !security.isNull("figi") ? security.getString("figi") : "")
+                        .Figi_uniqueid(security.has("figi_uniqueid") && !security.isNull("figi_uniqueid") ? security.getString("figi_uniqueid") : "")
+                        .Delisted_security((security.has("delisted_security") && !security.isNull("delisted_security")) && security.getBoolean("delisted_security"))
+                        .Security_name(security.has("security_name") && !security.isNull("security_name") ? security.getString("security_name") : "")
+                        .Last_crsp_adj_date(security.has("last_crsp_adj_date") && !security.isNull("last_crsp_adj_date") ? security.getString("last_crsp_adj_date") : "")
+                        .Composite_figi(security.has("composite_figi") && !security.isNull("composite_figi") ? security.getString("composite_figi") : "")
+                        .Etf((security.has("etf") && !security.isNull("replace")) && security.getBoolean("etf"))
+                        .Currency(security.has("currency") && !security.isNull("currency") ? security.getString("currency") : "")
+                        .Exch_symbol(security.has("exch_symbol") && !security.isNull("exch_symbol") ? security.getString("exch_symbol") : "")
+                        .Security_type(security.has("security_type") && !security.isNull("security_type") ? security.getString("security_type") : "")
+                        .Figi_ticker(security.has("figi_ticker") && !security.isNull("figi_ticker") ? security.getString("figi_ticker") : "")
+                        .Market_sector(security.has("market_sector") && !security.isNull("market_sector") ? security.getString("market_sector") : "")
+                        .build()
+        );
     }
 
 
