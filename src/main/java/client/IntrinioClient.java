@@ -27,6 +27,7 @@ public class IntrinioClient {
     private CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     private final String COMPANIES_URL = "https://api.intrinio.com/companies";
     private final String SECURITIES_URL = "https://api.intrinio.com/securities";
+    private final String PRICES_URL = "https://api.intrinio.com/prices";
 
 
     public IntrinioClient(String username, String password) {
@@ -295,4 +296,104 @@ public class IntrinioClient {
     }
 
 
+    public Optional<Price[]> getPricesByIdentifier(String identifier) {
+        try {
+            String escapedIdentifier = URLEncoder.encode(identifier, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.PRICES_URL + "?identifier=" + escapedIdentifier));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject priceJSON = new JSONObject(responseBody);
+            return buildPricesFromJSON(priceJSON);
+
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public Optional<Price[]> getPricesByIdentifier(String identifier, String start_date) {
+        try {
+            String escapedIdentifier = URLEncoder.encode(identifier, "UTF-8");
+            start_date = URLEncoder.encode(start_date, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.PRICES_URL + "?identifier=" + escapedIdentifier + "&start_date=" + start_date));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject priceJSON = new JSONObject(responseBody);
+            return buildPricesFromJSON(priceJSON);
+
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public Optional<Price[]> getPricesByIdentifier(String identifier, String start_date, String end_date) {
+        try {
+            String escapedIdentifier = URLEncoder.encode(identifier, "UTF-8");
+            start_date = URLEncoder.encode(start_date, "UTF-8");
+            end_date = URLEncoder.encode(end_date, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.PRICES_URL + "?identifier=" + escapedIdentifier + "&start_date=" + start_date + "&end_date=" + end_date));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject priceJSON = new JSONObject(responseBody);
+            return buildPricesFromJSON(priceJSON);
+
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public Optional<Price[]> getPricesByIdentifier(String identifier, String start_date, String end_date, String frequency) {
+        try {
+            String escapedIdentifier = URLEncoder.encode(identifier, "UTF-8");
+            start_date = URLEncoder.encode(start_date, "UTF-8");
+            end_date = URLEncoder.encode(end_date, "UTF-8");
+            frequency = URLEncoder.encode(frequency, "UTF-8");
+            HttpResponse response = this.client.execute(new HttpGet(this.PRICES_URL + "?identifier=" + escapedIdentifier + "&start_date=" + start_date + "&end_date=" + end_date + "&frequency=" + frequency));
+            String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+            if (responseBody.isEmpty() || response.getStatusLine().getStatusCode() != 200) {
+                return Optional.empty();
+            }
+            JSONObject priceJSON = new JSONObject(responseBody);
+            return buildPricesFromJSON(priceJSON);
+
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    private Optional<Price[]> buildPricesFromJSON(JSONObject json) {
+        if (json.length() == 0 && (!json.has("data") || json.getJSONArray("data").length() == 0)) {
+            return Optional.empty();
+        } else {
+            JSONArray pricesJSON = json.getJSONArray("data");
+            Price[] prices = new Price[pricesJSON.length()];
+            for (int i = 0; i < pricesJSON.length(); i++) {
+                JSONObject price = pricesJSON.getJSONObject(i);
+                String date = price.has("date") && !price.isNull("date") ? price.getString("date") : "";
+                double open = price.has("open") && !price.isNull("open") ? price.getDouble("open") : 0;
+                double high = price.has("high") && !price.isNull("high") ? price.getDouble("high") : 0;
+                double low = price.has("low") && !price.isNull("low") ? price.getDouble("low") : 0;
+                double close = price.has("close") && !price.isNull("close") ? price.getDouble("close") : 0;
+                double volume = price.has("volume") && !price.isNull("volume") ? price.getDouble("volume") : 0;
+                double ex_dividend = price.has("ex_dividend") && !price.isNull("ex_dividend") ? price.getDouble("ex_dividend") : 0;
+                double split_ratio = price.has("split_ratio") && !price.isNull("split_ratio") ? price.getDouble("split_ratio") : 0;
+                double adj_open = price.has("adj_open") && !price.isNull("adj_open") ? price.getDouble("adj_open") : 0;
+                double adj_high = price.has("adj_high") && !price.isNull("adj_high") ? price.getDouble("adj_high") : 0;
+                double adj_low = price.has("adj_low") && !price.isNull("adj_low") ? price.getDouble("adj_low") : 0;
+                double adj_close = price.has("adj_close") && !price.isNull("adj_close") ? price.getDouble("adj_close") : 0;
+                double adj_volume = price.has("adj_volume") && !price.isNull("adj_volume") ? price.getDouble("adj_volume") : 0;
+                prices[i] = new Price(date, open, high, low, close, volume, ex_dividend, split_ratio, adj_open, adj_high, adj_low, adj_close, adj_volume);
+            }
+            return Optional.of(prices);
+        }
+    }
 }
